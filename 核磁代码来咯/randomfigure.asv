@@ -1,0 +1,55 @@
+% function jitter_sequence = create_balanced_jitter(jitter_pool, total_trials, extra_indices)
+%     % jitter_pool: jitter值数组，如 [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+%     % total_trials: 总试次数
+%     % extra_indices: 需要多分配1次的索引，如 [1, 7] 表示第一个和最后一个多分配
+% 
+%     base_count = floor(total_trials / length(jitter_pool));
+%     remainder = mod(total_trials, length(jitter_pool));
+% 
+%     % 初始化分配次数
+%     trial_counts = base_count * ones(1, length(jitter_pool));
+% 
+%     % 额外分配
+%     if nargin < 3
+%         extra_indices = [1, length(jitter_pool)];  % 默认首尾多分配
+%     end
+% 
+%     for i = 1:min(remainder, length(extra_indices))
+%         idx = extra_indices(i);
+%         trial_counts(idx) = trial_counts(idx) + 1;
+%     end
+% 
+%     % 生成序列
+%     jitter_sequence = [];
+%     for i = 1:length(jitter_pool)
+%         jitter_sequence = [jitter_sequence; repmat(jitter_pool(i), trial_counts(i), 1)];
+%     end
+% end
+% 
+% % 使用示例：
+% jitter_pool = [1,1.5,2,2.5,3];
+% jitter_sequence = create_balanced_jitter(jitter_pool, 240, [1, 5]);
+% 
+% % 写入文件
+% filename = "D:\想法的实施\MATLAB_dm\核磁代码来咯\try_AD_jitter.xlsx";
+% writematrix(jitter_sequence, filename);
+generate_simple_jitter(1, 240);
+function generate_simple_jitter(sub_num, trial_num)
+    % 根据被试编号设定随机种子
+    rng(sub_num);
+    
+    % 参数设置（秒）
+    jitter_min = 2.0;  % 最小2秒
+    jitter_max = 5.0;  % 最大5秒
+    
+    % 生成连续均匀分布jitter（秒）
+    jitter_data = jitter_min + (jitter_max - jitter_min) * rand(trial_num, 1);
+    
+    % 保存到Excel（只有一列数据，无表头）
+    filename ="D:\想法的实施\MATLAB_dm\核磁代码来咯\try_random_numbers.xlsx";
+    writematrix(jitter_data, filename);
+    
+    fprintf('Jitter生成完成！\n');
+    fprintf('范围: %.1f-%.1f秒，试次数: %d\n', jitter_min, jitter_max, trial_num);
+    fprintf('已保存至: %s\n', filename);
+end

@@ -1,0 +1,891 @@
+clear;clc;
+path=pwd;
+PsychDefaultSetup(0);
+
+try
+    %% 被试信息
+
+    %MATLAB自带inputdlg函数，其作用是打开一个收集用户输入的对话框，并将输入的信息赋给一个变量
+    % inputdlg中，prompt是对需要输入的信息的提示，title就是对话框标题，“[1, 50]”是输入框的维度，表示对话框的高度为一个字符，长度为50个字符。
+    prompt = {'Subject Number','Gender[1 = male, 2 = female]','Age','Handeness[1 = left, 2 = right]', 'Name[initials]'};
+    title = 'Exp infor'; % The title of the dialog boxy
+    default_input = {'999','999','999','999','999'}; % Default input value(s)
+    subinfo = inputdlg(prompt,title,[1, 50],default_input)';
+
+    %% 读入相关材料
+    subID=17;
+    moralR_train_material_data = readmatrix ("E:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\rating_train.xlsx");
+    moralR_train_numRows = moralR_train_material_data(:)';
+    jitter_train_data = readmatrix ("E:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\train_random_numbers.xlsx");
+    AD_train_numRows = size(jitter_train_data, 1);
+    randomOrder_AD_train = randperm(AD_train_numRows);
+    jitter_train_shuffled = jitter_train_data(randomOrder_AD_train, :); % 随机排序
+    AD_train_data = readcell ("E:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\AD_rating_train.xlsx");
+    AD_train_numRows = size(AD_train_data, 1);
+    randomOrder_AD_train = randperm(AD_train_numRows);
+    AD_train_shuffled = AD_train_data(randomOrder_AD_train, :); % 随机排序
+    AD_train_data=readmatrix ("E:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\train_AD_jitter.xlsx");
+    AD_train_numRows = size(AD_train_data, 1);
+    randomOrder_AD_train = randperm(AD_train_numRows);
+    train_AD_jitter = AD_train_data(randomOrder_AD_train, :); % 随机排序% 随机排序
+    random_traincondition=readmatrix ("E:\fMRI代码及其附属文件\临时数据存放点\train_order.xlsx");
+    random_trainconditionList=random_traincondition(subID,:);
+    FTtrainrating=readmatrix ("E:\fMRI代码及其附属文件\临时数据存放点\FTtrainrating.xlsx");
+
+
+    %% 实验信息配置
+    train_trialnum=8;
+
+    %%
+    %% 窗口准备工作
+    % 配置基本属性
+    Screen('Preference', 'Verbosity', 0);
+    Screen('Preference', 'SkipSyncTests', 1); %'SkipSyncTests' 偏好为 1，意味着在初始化屏幕或绘图时，Psychtoolbox 将跳过同步测试
+    Screen ('Preference', 'VisualDebugLevel', 0); %'VisualDebugLevel' 偏好为 1。这个设置用于控制 Psychtoolbox 在运行时输出的视觉调试信息的级别
+
+    %% 窗口选择
+    windowSet = 1; % 0 = 1280*720; 1 =  [0, 0, 2160, 1440];
+    if windowSet == 0
+        % 窗口参数设置
+        windowRect = [0, 0, 1280, 720]; %配置窗口大小
+        [window,wsize]=Screen('OpenWindow', 0, [0,0,0], windowRect); %Screen函数第一个参数0设置调用屏幕，第二个参数[0 0 0]设置背景颜色，第三个参数设置窗口尺寸[0,0,2550,1600];调用 Screen('OpenWindow', ...) 函数时，它返回一个窗口标识符（通常是一个整数）和一个表示窗口大小的向量(写入Wsize)
+        Screen('TextSize', window, 30); %配置字体大小
+        frameRect_size = 3; %矩形边框宽度
+
+
+        % 评分界面参数设置
+        baseRect = [0 0 10 30]; % 鼠标对应刻度线位置的方块大小
+        centerCorr1 = 25; % 使滑条上文本在鼠标位置正上方
+        main_line_size = 5; % 主刻度线宽度
+        vertical_line_size = 5; % 竖刻度线宽度
+        vertical_line_height = 10; % 竖刻度线高度
+        RectWidth = 4; %鼠标对应刻度线位置的方块
+
+    elseif windowSet == 1
+        % 窗口参数设置
+        windowRect = [0, 0, 2160, 1440]; %配置窗口大小
+        [window,wsize]=Screen('OpenWindow', 0, [0,0,0], windowRect); %Screen函数第一个参数0设置调用屏幕，第二个参数[0 0 0]设置背景颜色，第三个参数设置窗口尺寸[0,0,2550,1600];调用 Screen('OpenWindow', ...) 函数时，它返回一个窗口标识符（通常是一个整数）和一个表示窗口大小的向量(写入Wsize)
+        Screen('TextSize', window, 40); %配置字体大小
+        frameRect_size = 5; %矩形边框宽度
+
+
+        %评分界面参数设置
+        baseRect = [0 0 20 60];
+        centerCorr1 = 14;
+        centerCorr2 = 26;
+        main_line_size = 8;
+        vertical_line_size = 8;
+        vertical_line_height = 16; % 竖刻度线高度
+        RectWidth = 7; %鼠标对应刻度线位置的方块
+
+    end
+
+    [XCenter, ~] = RectCenter(wsize); %获取屏幕中心点，RectCenter用于计算一个矩形的中心点坐标
+    screenWidth = wsize(3);
+    screenHeight = wsize(4);
+
+    Screen('TextFont', window, 'Microsoft YaHei'); %配置字体
+
+    slack=Screen('GetFlipInterval',window)/2; % Screen('GetFlipInterval', window) 函数来获取指定窗口 window 的屏幕刷新间隔，以确保绘图操作能够在下一次屏幕刷新之前完成
+    HideCursor; %HideCursor函数用于隐藏当前屏幕上的鼠标光标
+
+    t=GetSecs;
+    fixCrossDimPix = 20; % 十字臂的一半长度（总长度为40像素）
+    lineWidthPix = 4;    % 线条宽度（像素）
+
+    [xCenter, yCenter] = RectCenter(Screen('Rect', window));
+
+    % 横纵坐标点（相对中心）
+    xCoords = [-fixCrossDimPix fixCrossDimPix 0 0];
+    yCoords = [0 0 -fixCrossDimPix fixCrossDimPix];
+    allCoords = [xCoords; yCoords];
+    %按键设置
+    makesureKey = KbName('2@');
+    leftKey = KbName('3#');
+    rightKey = KbName('4$');
+
+
+    %% 数据收集
+    % 练习回合数据存放
+    train_picID = zeros(train_trialnum, 1);
+    train_subinfo = zeros(train_trialnum,1);
+    train_pic= zeros(train_trialnum,1);
+    train_block= zeros(train_trialnum,1);
+    train_subADblock= zeros(train_trialnum,1);
+    train_subConditionblock= zeros(train_trialnum,1);
+    train_AD_Rating= zeros(train_trialnum,1);
+    ADjittershow = zeros(train_trialnum, 1);
+    trailjittershow = zeros(train_trialnum, 1);
+    cueshow = zeros(train_trialnum, 1);
+    feedbackshow = zeros(train_trialnum, 1);
+    overtimeshow = zeros(train_trialnum, 1);
+
+    
+    train_starttime = zeros(train_trialnum, 1);
+    train_startA = zeros(train_trialnum, 1);
+    train_startB = zeros(train_trialnum, 1);
+    train_startC = zeros(train_trialnum, 1);
+    train_startRating = zeros(train_trialnum,1);
+    train_Rating = zeros(train_trialnum,1);
+    train_isTimeout = zeros(train_trialnum, 1);
+    train_RT_AC = zeros(train_trialnum, 1);
+    train_RT_AB = zeros(train_trialnum, 1);
+    train_feedbackTime = zeros(train_trialnum, 1);
+
+    for i = 1: length(subinfo)
+        train_subinfo(i) = str2double(subinfo{i});
+    end
+    % 初始化 train_pic 为单元数组
+    train_pic = cell(train_trialnum, 1);
+    % 获取建议人参考图片的原始尺寸
+    imagePath1 = ['E:\\fMRI代码及其附属文件\\反转小人图片\\yellow' num2str(4) '.png'];
+    originalImage1 = imread(imagePath1);
+    imageHeight1 = size(originalImage1, 1);
+    imageWidth1 = size(originalImage1, 2);
+
+
+    % 练习试次图片导入
+    for i = 1:train_trialnum
+        train_image_ID = moralR_train_numRows(1,i);
+        filePath = ['E:\fMRI代码及其附属文件\练习试次图片11\' num2str(train_image_ID) '.bmp'];
+        disp(filePath);  % 打印路径，检查是否正确
+        if ~exist(filePath, 'file')
+            error('文件不存在，请检查路径和文件名: %s', filePath);
+        end
+        train_pic{i} = imread(filePath);
+    end
+
+    train_blocktime=1;
+        begainreadyshow=GetSecs;
+    showexperimentInstruction(window, "E:\fMRI代码及其附属文件\指导语\croppedinstru_4.bmp",  slack, [0, 0, 2160, 1440]);
+    while train_blocktime<=4
+        %% 道德评分部分
+        if random_trainconditionList(1,train_blocktime)==2 ||  random_trainconditionList(1,train_blocktime)==3
+            cueshowtime=GetSecs;
+            if random_trainconditionList(1,train_blocktime)==2
+                showInstruction(window, "E:\fMRI代码及其附属文件\指导语\cropped_2.bmp",  slack, [0, 0, 2160, 1440]);
+            else
+                showInstruction(window, "E:\fMRI代码及其附属文件\指导语\cropped_3.bmp",  slack, [0, 0, 2160, 1440]);
+            end
+            %显示练习回合指导语
+
+            for i = 1:2
+                if random_trainconditionList(1,train_blocktime)==2
+                    k=random_trainconditionList(1,train_blocktime)-2+i;
+                else
+                    k=random_trainconditionList(1,train_blocktime)-1+i;
+                end
+                train_image_ID = moralR_train_material_data(k);
+                filePath = ['E:\fMRI代码及其附属文件\练习试次图片11\' num2str(train_image_ID) '.bmp'];
+                disp(filePath);  % 打印路径，检查是否正确
+                if ~exist(filePath, 'file')
+                    error('文件不存在，请检查路径和文件名: %s', filePath);
+                end
+                pic_image = imread(filePath);
+                train_picID(k) = train_image_ID;
+                pic = Screen('MakeTexture', window, pic_image);
+                image_width = size(pic_image, 2);
+                image_height = size(pic_image, 1);
+                image_ratio = image_height / image_width;
+                image_display_scale = 0.35;
+                image_display_width = image_display_scale * screenWidth;
+                picY = 0.18;
+                lowerText = '完全没有不道德';
+                upperText = '非常不道德';
+                lineLength = 0.5 * screenWidth;
+                halfLength = lineLength / 2;
+                divider = lineLength / 6;
+                lineX = XCenter;
+                lineY = 0.55 * screenHeight;
+
+                currentRating=FTtrainrating(k);
+                train_RatingText = [num2str(FTtrainrating(k)) ];
+                if FTtrainrating(k) <=9
+                    DrawFormattedText(window, train_RatingText, lineX-centerCorr1+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                else
+                    DrawFormattedText(window, train_RatingText, lineX-centerCorr2+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                end
+                DrawFormattedText(window, double('您的道德初次估计值为'),'center', 0.43*screenHeight, 255);
+                Screen('DrawTexture', window, pic, [0,0,image_width,image_height],[((1-image_display_scale)/2)*screenWidth,picY*screenHeight,((1-image_display_scale)/2)*screenWidth+image_display_width,picY*screenHeight+image_display_width*image_ratio]);
+                Screen('FrameRect', window, [255,255,255],[-frameRect_size+((1-image_display_scale)/2)*screenWidth, -frameRect_size+picY*screenHeight, frameRect_size+((1-image_display_scale)/2)*screenWidth+image_display_width, frameRect_size+picY*screenHeight+image_display_width*image_ratio], frameRect_size)
+                Screen('DrawLine', window, [255,255,255], (lineX-halfLength-vertical_line_size/2), (lineY), (lineX+halfLength+vertical_line_size/2), (lineY), main_line_size);
+                for scalepoint = -3:3
+                    Screen('DrawLine', window, [255,255,255], (lineX + scalepoint*divider), (lineY), (lineX + scalepoint*divider), (lineY-vertical_line_height), vertical_line_size);
+                end
+                Screen('FillRect', window, [255,0,0], [lineX+divider*(currentRating-15)/5-RectWidth,lineY-RectWidth*3,lineX+divider*(currentRating-15)/5+RectWidth,lineY+RectWidth*3]);
+                DrawFormattedText(window, double(lowerText), lineX-halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+                DrawFormattedText(window, double(upperText), lineX+halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+
+                Screen('Flip', window, t - slack);
+                train_starttime(k) = GetSecs;
+                WaitSecs(2);
+
+                % 初始化计时与变量
+                confirmed = false;
+                timeoutFlag = 0;
+                timeoutShown = false;
+                ratingDurationLimit = 8;  % 正常评分时长上限
+                feedbackMin = 0.5;        % 超时后的固定反馈时长
+                train_startRating(k) = currentRating;
+                m = 0;
+
+
+                %%AI的道德评分
+                % 定义图片路径
+                if random_trainconditionList(1,train_blocktime)==2
+                    imagePath = 'E:\\fMRI代码及其附属文件\\反转小人图片\\yellow2.png';
+                else
+                    imagePath = 'E:\\fMRI代码及其附属文件\\反转小人图片\\yellow3.png';
+                end
+                originalImage = imread(imagePath);
+
+                % 计算缩放比例，确保图片适应屏幕宽度或高度
+                scaleFactor = min(screenWidth / imageWidth1, screenHeight / imageHeight1);
+                scaleFactor = scaleFactor / 2;
+
+                % 调整图片大小
+                resizedImage = imresize(originalImage, scaleFactor);
+
+                % 将图片放置在屏幕正中下方
+                resizedImageHeight = size(resizedImage, 1);
+                resizedImageWidth = size(resizedImage, 2);
+                xOffset = (screenWidth - resizedImageWidth) / 2;
+                yOffset = screenHeight - resizedImageHeight - 200; % 200像素的底部边距
+
+                % 打印路径，检查是否正确
+                disp(imagePath);
+
+                % 检查图片是否存在
+                if isempty(originalImage)
+                    error('图片无法加载，请检查路径和文件名: %s', imagePath);
+                end
+
+                % 在屏幕缓冲区中绘制调整后的图片
+                rect = [xOffset, yOffset, xOffset + resizedImageWidth, yOffset + resizedImageHeight];
+                Screen('PutImage', window, resizedImage, rect);
+                if FTtrainrating(k) < 0 || FTtrainrating(k) > 30
+                    error('train_moralRating1(i) must be between 0 and 30.'); % 确保x在[0,100]之间
+                end
+
+                % 定义两个区间
+                interval1 = [(max(0, FTtrainrating(k) - 9)),(max(0, FTtrainrating(k) - 3))];
+
+                interval2 = [(min(30, FTtrainrating(k) + 3)), (min(30, FTtrainrating(k) + 9))];
+
+                % 检查区间是否合理
+                if interval1(1) > interval1(2) || interval2(1) > interval2(2)
+                    error('区间定义不合理: interval1 = [%d, %d], interval2 = [%d, %d]', interval1(1), interval1(2), interval2(1), interval2(2));
+                end
+
+                % 随机选择一个区间
+
+                if AD_train_shuffled{k, 1} == 1
+                    train_AD_Rating(k) = randi([interval1(1), interval1(2)]);
+                else
+                    train_AD_Rating(k) = randi([interval2(1), interval2(2)]);
+                end
+
+
+                % 确保结果在[0,30]之间
+                train_AD_Rating(k) = max(0, min(30, train_AD_Rating(k)));
+
+                % 调试信息
+                disp(['train_moralRating1(i): ', num2str(FTtrainrating(k))]);
+                disp(['interval1: ', num2str(interval1)]);
+                disp(['interval2: ', num2str(interval2)]);
+                disp(['train_AI_moralRating(i): ', num2str(train_AD_Rating(k))]);
+                ADjittershow(k)=GetSecs;
+                Screen('PutImage', window, resizedImage, rect);
+                Screen('Flip', window, t - slack);
+                WaitSecs(train_AD_jitter(k));
+
+
+                %% 主评分循环
+                train_startA(k) = GetSecs;  % 开始呈现评分界面的时间点
+                while ~confirmed
+                    [keyIsDown, ~, keyCode] = KbCheck;
+
+                    % 键盘操作
+                    if keyIsDown
+                        if keyCode(leftKey)
+                            currentRating = max(0, currentRating - 1);
+                            if train_startB(k) == 0
+                                train_startB(k) = GetSecs; % 第一次移动时间
+                            end
+                            WaitSecs(0.1);
+                        elseif keyCode(rightKey)
+                            currentRating = min(30, currentRating + 1);
+                            if train_startB(k) == 0
+                                train_startB(k) = GetSecs;
+                            end
+                            WaitSecs(0.1);
+                        elseif keyCode(makesureKey)
+                            train_startC(k) = GetSecs; % 按下B的时间
+                            confirmed = true;
+                            WaitSecs(0.2);
+                        end
+                    end
+
+                    % 检查是否超时（超过8秒未按B）
+                    if ~timeoutShown && (GetSecs - train_startA(k)) > ratingDurationLimit
+                        timeoutFlag = 1;
+                        timeoutShown = true;
+
+                        % 显示超时提示1秒
+                        overtimeshow(k)=GetSecs;
+                        DrawFormattedText(window, double('您已超时，将进入下一回合'), 'center', 'center', [255,0,0]);
+                        Screen('Flip', window);
+                        WaitSecs(1);
+                        confirmed = true;
+                        break;
+                    end
+                    % 绘制评分界面
+                    ratingText = [num2str(currentRating)];
+                    train_RatingText = [num2str(FTtrainrating(k)) ];
+                    if currentRating <=9
+                        DrawFormattedText(window, ratingText, lineX-centerCorr1+divider*(currentRating-15)/5, lineY+0.07*screenHeight,[0,255,0]);
+                    else
+                        DrawFormattedText(window, ratingText, lineX-centerCorr2+divider*(currentRating-15)/5, lineY+0.07*screenHeight, [0,255,0]);
+                    end
+                    if FTtrainrating(k) <=9
+                        DrawFormattedText(window, train_RatingText, lineX-centerCorr1+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                    else
+                        DrawFormattedText(window, train_RatingText, lineX-centerCorr2+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                    end
+
+                    % 重新绘制刻度线和文本
+                    DrawFormattedText(window, double('您估计对方会在多大程度上觉得该词语所描述的行为是不道德的？'),'center', 0.43*screenHeight, 255);
+                    Screen('DrawTexture', window, pic, [0,0,image_width,image_height],[((1-image_display_scale)/2)*screenWidth,picY*screenHeight,((1-image_display_scale)/2)*screenWidth+image_display_width,picY*screenHeight+image_display_width*image_ratio]);
+                    Screen('FrameRect', window, [255,255,255],[-frameRect_size+((1-image_display_scale)/2)*screenWidth, -frameRect_size+picY*screenHeight, frameRect_size+((1-image_display_scale)/2)*screenWidth+image_display_width, frameRect_size+picY*screenHeight+image_display_width*image_ratio], frameRect_size)
+
+                    % 画水平主刻度线
+                    Screen('DrawLine', window, [255,255,255], (lineX-halfLength-vertical_line_size/2), (lineY), (lineX+halfLength+vertical_line_size/2), (lineY), main_line_size);
+                    for scalepoint = -3:3
+                        Screen('DrawLine', window, [255,255,255], (lineX + scalepoint*divider), (lineY), (lineX + scalepoint*divider), (lineY-vertical_line_height), vertical_line_size);
+                    end
+                    DrawFormattedText(window, double(lowerText), lineX-halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+                    DrawFormattedText(window, double(upperText), lineX+halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+
+                    % 绘制鼠标所在位置的矩形
+                    Screen('FillRect', window, [0,255,0], [lineX+divider*(currentRating-15)/5-RectWidth*2,lineY-RectWidth*2,lineX+divider*(currentRating-15)/5+RectWidth*2,lineY+RectWidth*2]);
+                    Screen('FillRect', window, [255,0,0], [lineX+divider*(FTtrainrating(k)-15)/5-RectWidth,lineY-RectWidth*3,lineX+divider*(FTtrainrating(k)-15)/5+RectWidth,lineY+RectWidth*3]);
+
+                    % 重新绘制 AI 的道德评分条
+                    AD_rating = train_AD_Rating(k);
+                    AD_ratingText = [num2str(AD_rating)];
+                    if AD_rating <=9
+                        DrawFormattedText(window,AD_ratingText, lineX-centerCorr1+divider*(AD_rating-15)/5, lineY-0.04*screenHeight,  [255,255,0]);
+                    else
+                        DrawFormattedText(window, AD_ratingText, lineX-centerCorr2+divider*(AD_rating-15)/5, lineY-0.04*screenHeight,  [255,255,0]);
+                    end
+                    Screen('FillRect', window,  [255,255,0], [lineX+divider*(AD_rating-15)/5-RectWidth,lineY-RectWidth*3,lineX+divider*(AD_rating-15)/5+RectWidth,lineY+RectWidth*3]);
+                    Screen('PutImage', window, resizedImage, rect);
+                    Screen('Flip', window, t-slack);
+
+                end
+
+                %% 记录时间点与计算结果
+                if train_startC(k)~=0
+                    train_RT_AC(k) = train_startC(k) - train_startA(k); % 反应时
+                else
+                    train_RT_AC(k) = 0;
+                end
+                if train_startB(k)~=0
+                    train_RT_AB(k) = train_startB(k) - train_startA(k); % 准备移动时长
+                else
+                    train_RT_AB(k)=0;
+                end
+                train_Rating(k) = round(currentRating);
+                train_isTimeout(k) = timeoutFlag;
+
+
+                % 若发生过超时提示，记录超时时长及反馈时长
+                if timeoutFlag == 1
+                    train_feedbackTime(k) = 0;
+                else
+                    feedbackshow(k)= GetSecs;
+                    train_feedbackTime(k) = ratingDurationLimit - train_RT_AC(k);
+                    % 显示被试的第二次道德评分反馈界面，同时保留 AI 的道德评分条
+                    ratingText = [num2str(train_Rating(k))];
+                    train_RatingText = [num2str(FTtrainrating(k))];
+                    if currentRating <=9
+                        DrawFormattedText(window, ratingText, lineX-centerCorr1+divider*(currentRating-15)/5, lineY+0.07*screenHeight,[255,0,0]);
+                    else
+                        DrawFormattedText(window, ratingText, lineX-centerCorr2+divider*(currentRating-15)/5, lineY+0.07*screenHeight,[255,0,0]);
+                    end
+                    if FTtrainrating(k) <=9
+                        DrawFormattedText(window, train_RatingText, lineX-centerCorr1+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                    else
+                        DrawFormattedText(window, train_RatingText, lineX-centerCorr2+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                    end
+                    DrawFormattedText(window, double('您估计对方会在多大程度上觉得该词语所描述的行为是不道德的？'),'center', 0.43*screenHeight, 255);
+                    Screen('DrawTexture', window, pic, [0,0,image_width,image_height],[((1-image_display_scale)/2)*screenWidth,picY*screenHeight,((1-image_display_scale)/2)*screenWidth+image_display_width,picY*screenHeight+image_display_width*image_ratio]);
+                    Screen('FrameRect', window, [255,255,255],[-frameRect_size+((1-image_display_scale)/2)*screenWidth, -frameRect_size+picY*screenHeight, frameRect_size+((1-image_display_scale)/2)*screenWidth+image_display_width, frameRect_size+picY*screenHeight+image_display_width*image_ratio], frameRect_size)
+                    Screen('DrawLine', window, [255,255,255], (lineX-halfLength-vertical_line_size/2), (lineY), (lineX+halfLength+vertical_line_size/2), (lineY), main_line_size);
+                    for scalepoint = -3:3
+                        Screen('DrawLine', window, [255,255,255], (lineX + scalepoint*divider), (lineY), (lineX + scalepoint*divider), (lineY-vertical_line_height), vertical_line_size);
+                    end
+                    DrawFormattedText(window, double(lowerText), lineX-halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+                    DrawFormattedText(window, double(upperText), lineX+halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+                    Screen('FillRect', window, [255,0,0], [lineX+divider*(currentRating-15)/5-RectWidth*2,lineY-RectWidth*2,lineX+divider*(currentRating-15)/5+RectWidth*2,lineY+RectWidth*2]);
+
+                    % 重新绘制 AI 的道德评分条
+                    Screen('FillRect', window, [255,0,0], [lineX+divider*(FTtrainrating(k)-15)/5-RectWidth,lineY-RectWidth*3,lineX+divider*(FTtrainrating(k)-15)/5+RectWidth,lineY+RectWidth*3]);
+                    if AD_rating <=9
+                        DrawFormattedText(window,AD_ratingText, lineX-centerCorr1+divider*(AD_rating-15)/5, lineY-0.04*screenHeight,  [255,255,0]);
+                    else
+                        DrawFormattedText(window, AD_ratingText, lineX-centerCorr2+divider*(AD_rating-15)/5, lineY-0.04*screenHeight,  [255,255,0]);
+                    end
+                    Screen('FillRect', window, [255,255,0], [lineX+divider*(AD_rating-15)/5-RectWidth,lineY-RectWidth*3,lineX+divider*(AD_rating-15)/5+RectWidth,lineY+RectWidth*3]);
+                    Screen('PutImage', window, resizedImage, rect);
+                    Screen('Flip', window, t-slack);
+                    WaitSecs(train_feedbackTime(k));
+                end
+
+                %jitter屏
+                trailjittershow(k)=GetSecs;
+                if mod(k,2)~=0
+                    % 绘制白色十字注视点
+                    Screen('DrawLines', window, allCoords, lineWidthPix, [255 255 255], [xCenter yCenter]);
+                    Screen('Flip', window);
+                    if timeoutFlag == 1
+                        WaitSecs((jitter_train_shuffled(k)-1));
+                    else
+                        WaitSecs(jitter_train_shuffled(k));
+                    end
+                end
+
+                if random_trainconditionList(1,train_blocktime)==2
+                    train_block(k)=2;
+                    train_subADblock(k)= 2;
+                    train_subConditionblock(k)= 1;
+                else
+                    train_block(k)=3;
+                    train_subADblock(k)= 1;
+                    train_subConditionblock(k)= 1;
+                end
+                cueshowtime=GetSecs;
+            end
+            %% 食物评分部分
+        else
+            cueshowtime=GetSecs;
+            if random_trainconditionList(1,train_blocktime)==5
+                showInstruction(window, "E:\fMRI代码及其附属文件\指导语\cropped_5.bmp",  slack, [0, 0, 2160, 1440]);
+            else
+                showInstruction(window, "E:\fMRI代码及其附属文件\指导语\cropped_8.bmp",  slack, [0, 0, 2160, 1440]);
+            end
+            for i = 1:2
+                if random_trainconditionList(1,train_blocktime)==5
+                    k=random_trainconditionList(1,train_blocktime)-1+i;
+                else
+                    k=random_trainconditionList(1,train_blocktime)-2+i;
+                end
+                train_image_ID = moralR_train_material_data(k);
+                filePath = ['E:\fMRI代码及其附属文件\练习试次图片11\' num2str(train_image_ID) '.bmp'];
+                disp(filePath);  % 打印路径，检查是否正确
+                if ~exist(filePath, 'file')
+                    error('文件不存在，请检查路径和文件名: %s', filePath);
+                end
+                pic_image = imread(filePath);
+                train_picID(k) = train_image_ID;
+                pic = Screen('MakeTexture', window, pic_image);
+                image_width = size(pic_image, 2);
+                image_height = size(pic_image, 1);
+                image_ratio = image_height / image_width;
+                image_display_scale = 0.35;
+                image_display_width = image_display_scale * screenWidth;
+                picY = 0.18;
+                lowerText = '完全没有不喜欢';
+                upperText = '非常不喜欢';
+                lineLength = 0.5 * screenWidth;
+                halfLength = lineLength / 2;
+                divider = lineLength / 6;
+                lineX = XCenter;
+                lineY = 0.55 * screenHeight;
+
+                currentRating=FTtrainrating(k);
+                train_RatingText = [num2str(FTtrainrating(k)) ];
+                if FTtrainrating(k) <=9
+                    DrawFormattedText(window, train_RatingText, lineX-centerCorr1+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                else
+                    DrawFormattedText(window, train_RatingText, lineX-centerCorr2+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                end
+                DrawFormattedText(window, double('您的食物初次估计值为'),'center', 0.43*screenHeight, 255);
+                Screen('DrawTexture', window, pic, [0,0,image_width,image_height],[((1-image_display_scale)/2)*screenWidth,picY*screenHeight,((1-image_display_scale)/2)*screenWidth+image_display_width,picY*screenHeight+image_display_width*image_ratio]);
+                Screen('FrameRect', window, [255,255,255],[-frameRect_size+((1-image_display_scale)/2)*screenWidth, -frameRect_size+picY*screenHeight, frameRect_size+((1-image_display_scale)/2)*screenWidth+image_display_width, frameRect_size+picY*screenHeight+image_display_width*image_ratio], frameRect_size)
+                Screen('DrawLine', window, [255,255,255], (lineX-halfLength-vertical_line_size/2), (lineY), (lineX+halfLength+vertical_line_size/2), (lineY), main_line_size);
+                for scalepoint = -3:3
+                    Screen('DrawLine', window, [255,255,255], (lineX + scalepoint*divider), (lineY), (lineX + scalepoint*divider), (lineY-vertical_line_height), vertical_line_size);
+                end
+                Screen('FillRect', window, [255,0,0], [lineX+divider*(currentRating-15)/5-RectWidth,lineY-RectWidth*3,lineX+divider*(currentRating-15)/5+RectWidth,lineY+RectWidth*3]);
+                DrawFormattedText(window, double(lowerText), lineX-halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+                DrawFormattedText(window, double(upperText), lineX+halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+
+                Screen('Flip', window, t - slack);
+                train_starttime(k) = GetSecs;
+                WaitSecs(2);
+
+                % 初始化计时与变量
+                confirmed = false;
+                timeoutFlag = 0;
+                timeoutShown = false;
+                ratingDurationLimit = 8;  % 正常评分时长上限
+                feedbackMin = 0.5;        % 超时后的固定反馈时长
+                train_startRating(k) = currentRating;
+                m = 0;
+
+
+                %%AI的道德评分
+                % 定义图片路径
+                if random_trainconditionList(1,train_blocktime)==5
+                    imagePath = 'E:\\fMRI代码及其附属文件\\反转小人图片\\yellow1.png';
+                else
+                    imagePath = 'E:\\fMRI代码及其附属文件\\反转小人图片\\yellow4.png';
+                end
+                originalImage = imread(imagePath);
+
+                % 计算缩放比例，确保图片适应屏幕宽度或高度
+                scaleFactor = min(screenWidth / imageWidth1, screenHeight / imageHeight1);
+                scaleFactor = scaleFactor / 2;
+
+                % 调整图片大小
+                resizedImage = imresize(originalImage, scaleFactor);
+
+                % 将图片放置在屏幕正中下方
+                resizedImageHeight = size(resizedImage, 1);
+                resizedImageWidth = size(resizedImage, 2);
+                xOffset = (screenWidth - resizedImageWidth) / 2;
+                yOffset = screenHeight - resizedImageHeight - 200; % 200像素的底部边距
+
+                % 打印路径，检查是否正确
+                disp(imagePath);
+
+                % 检查图片是否存在
+                if isempty(originalImage)
+                    error('图片无法加载，请检查路径和文件名: %s', imagePath);
+                end
+
+                % 在屏幕缓冲区中绘制调整后的图片
+                rect = [xOffset, yOffset, xOffset + resizedImageWidth, yOffset + resizedImageHeight];
+                Screen('PutImage', window, resizedImage, rect);
+                if FTtrainrating(k) < 0 || FTtrainrating(k) > 30
+                    error('train_moralRating1(i) must be between 0 and 30.'); % 确保x在[0,100]之间
+                end
+
+                % 定义两个区间
+                interval1 = [(max(0, FTtrainrating(k) - 9)),(max(0, FTtrainrating(k) - 3))];
+
+                interval2 = [(min(30, FTtrainrating(k) + 3)), (min(30, FTtrainrating(k) + 9))];
+
+                % 检查区间是否合理
+                if interval1(1) > interval1(2) || interval2(1) > interval2(2)
+                    error('区间定义不合理: interval1 = [%d, %d], interval2 = [%d, %d]', interval1(1), interval1(2), interval2(1), interval2(2));
+                end
+
+                % 随机选择一个区间
+
+                if AD_train_shuffled{k, 1} == 1
+                    train_AD_Rating(k) = randi([interval1(1), interval1(2)]);
+                else
+                    train_AD_Rating(k) = randi([interval2(1), interval2(2)]);
+                end
+
+
+                % 确保结果在[0,30]之间
+                train_AD_Rating(k) = max(0, min(30, train_AD_Rating(k)));
+
+                % 调试信息
+                disp(['train_moralRating1(i): ', num2str(FTtrainrating(k))]);
+                disp(['interval1: ', num2str(interval1)]);
+                disp(['interval2: ', num2str(interval2)]);
+                disp(['train_AI_moralRating(i): ', num2str(train_AD_Rating(k))]);
+                ADjittershow(k)=GetSecs;
+                Screen('PutImage', window, resizedImage, rect);
+                Screen('Flip', window, t - slack);
+                WaitSecs(train_AD_jitter(k));
+
+
+                %% 主评分循环
+                train_startA(k) = GetSecs;  % 开始呈现评分界面的时间点
+                while ~confirmed
+                    [keyIsDown, ~, keyCode] = KbCheck;
+
+                    % 检查是否超时（超过8秒未按B）
+                    if ~timeoutShown && (GetSecs - train_startA(k)) > ratingDurationLimit
+                        timeoutFlag = 1;
+                        timeoutShown = true;
+
+                        % 显示超时提示1秒
+                        overtimeshow(k)=GetSecs;
+                        DrawFormattedText(window, double('您已超时，将进入下一回合'), 'center', 'center', [255,0,0]);
+                        Screen('Flip', window);
+                        WaitSecs(1);
+                        confirmed = true;
+                        break;
+                    end
+
+
+                    % 键盘操作
+                    if keyIsDown
+                        if keyCode(leftKey)
+                            currentRating = max(0, currentRating - 1);
+                            if train_startB(k) == 0
+                                train_startB(k) = GetSecs; % 第一次移动时间
+                            end
+                            WaitSecs(0.1);
+                        elseif keyCode(rightKey)
+                            currentRating = min(30, currentRating + 1);
+                            if train_startB(k) == 0
+                                train_startB(k) = GetSecs;
+                            end
+                            WaitSecs(0.1);
+                        elseif keyCode(makesureKey)
+                            train_startC(k) = GetSecs; % 按下B的时间
+                            confirmed = true;
+                            WaitSecs(0.2);
+                        end
+                    end
+
+                    % 绘制评分界面
+                    ratingText = [num2str(currentRating)];
+                    train_RatingText = [num2str(FTtrainrating(k))];
+                    if currentRating <=9
+                        DrawFormattedText(window, ratingText, lineX-centerCorr1+divider*(currentRating-15)/5, lineY+0.07*screenHeight,[0,255,0]);
+                    else
+                        DrawFormattedText(window, ratingText, lineX-centerCorr2+divider*(currentRating-15)/5, lineY+0.07*screenHeight, [0,255,0]);
+                    end
+                    if FTtrainrating(k)<=9
+                        DrawFormattedText(window, train_RatingText, lineX-centerCorr1+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                    else
+                        DrawFormattedText(window, train_RatingText, lineX-centerCorr2+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                    end
+
+                    % 重新绘制刻度线和文本
+                    DrawFormattedText(window, double('您估计对方会在多大程度上不喜欢该词语所描述的食物？'),'center', 0.43*screenHeight, 255);
+                    Screen('DrawTexture', window, pic, [0,0,image_width,image_height],[((1-image_display_scale)/2)*screenWidth,picY*screenHeight,((1-image_display_scale)/2)*screenWidth+image_display_width,picY*screenHeight+image_display_width*image_ratio]);
+                    Screen('FrameRect', window, [255,255,255],[-frameRect_size+((1-image_display_scale)/2)*screenWidth, -frameRect_size+picY*screenHeight, frameRect_size+((1-image_display_scale)/2)*screenWidth+image_display_width, frameRect_size+picY*screenHeight+image_display_width*image_ratio], frameRect_size)
+
+                    % 画水平主刻度线
+                    Screen('DrawLine', window, [255,255,255], (lineX-halfLength-vertical_line_size/2), (lineY), (lineX+halfLength+vertical_line_size/2), (lineY), main_line_size);
+                    for scalepoint = -3:3
+                        Screen('DrawLine', window, [255,255,255], (lineX + scalepoint*divider), (lineY), (lineX + scalepoint*divider), (lineY-vertical_line_height), vertical_line_size);
+                    end
+                    DrawFormattedText(window, double(lowerText), lineX-halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+                    DrawFormattedText(window, double(upperText), lineX+halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+
+                    % 绘制鼠标所在位置的矩形
+                    Screen('FillRect', window, [0,255,0], [lineX+divider*(currentRating-15)/5-RectWidth*2,lineY-RectWidth*2,lineX+divider*(currentRating-15)/5+RectWidth*2,lineY+RectWidth*2]);
+                    Screen('FillRect', window, [255,0,0], [lineX+divider*(FTtrainrating(k)-15)/5-RectWidth,lineY-RectWidth*3,lineX+divider*(FTtrainrating(k)-15)/5+RectWidth,lineY+RectWidth*3]);
+
+                    % 重新绘制 AI 的道德评分条
+                    AD_rating = train_AD_Rating(k);
+                    AD_ratingText = [num2str(AD_rating)];
+                    if AD_rating <=9
+                        DrawFormattedText(window,AD_ratingText, lineX-centerCorr1+divider*(AD_rating-15)/5, lineY-0.04*screenHeight,  [255,255,0]);
+                    else
+                        DrawFormattedText(window, AD_ratingText, lineX-centerCorr2+divider*(AD_rating-15)/5, lineY-0.04*screenHeight,  [255,255,0]);
+                    end
+                    Screen('FillRect', window,  [255,255,0], [lineX+divider*(AD_rating-15)/5-RectWidth,lineY-RectWidth*3,lineX+divider*(AD_rating-15)/5+RectWidth,lineY+RectWidth*3]);
+                    Screen('PutImage', window, resizedImage, rect);
+                    Screen('Flip', window, t-slack);
+                end
+
+                %% 记录时间点与计算结果
+                if train_startC(k)~=0
+                    train_RT_AC(k) = train_startC(k) - train_startA(k); % 反应时
+                else
+                    train_RT_AC(k) = 0;
+                end
+                if train_startB(k)~=0
+                    train_RT_AB(k) = train_startB(k) - train_startA(k); % 准备移动时长
+                else
+                    train_RT_AB(k)=0;
+                end
+                train_Rating(k) = round(currentRating);
+                train_isTimeout(k) = timeoutFlag;
+
+
+                % 反馈屏
+                if timeoutFlag == 1
+                    train_feedbackTime(k) = 0;
+                else
+                    feedbackshow(k)= GetSecs;
+                    train_feedbackTime(k) = ratingDurationLimit - train_RT_AC(k);
+                    ratingText = [num2str(currentRating)];
+                    train_RatingText = [num2str(FTtrainrating(k)) ];
+                    if currentRating <=9
+                        DrawFormattedText(window, ratingText, lineX-centerCorr1+divider*(currentRating-15)/5, lineY+0.07*screenHeight,[255,0,0]);
+                    else
+                        DrawFormattedText(window, ratingText, lineX-centerCorr2+divider*(currentRating-15)/5, lineY+0.07*screenHeight,[255,0,0]);
+                    end
+                    if FTtrainrating(k) <=9
+                        DrawFormattedText(window, train_RatingText, lineX-centerCorr1+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                    else
+                        DrawFormattedText(window, train_RatingText, lineX-centerCorr2+divider*(FTtrainrating(k)-15)/5, lineY-0.04*screenHeight, [255,0,0]);
+                    end
+                    DrawFormattedText(window, double('您估计对方会在多大程度上不喜欢该词语所描述的食物？'),'center', 0.43*screenHeight, 255);
+                    Screen('DrawTexture', window, pic, [0,0,image_width,image_height],[((1-image_display_scale)/2)*screenWidth,picY*screenHeight,((1-image_display_scale)/2)*screenWidth+image_display_width,picY*screenHeight+image_display_width*image_ratio]);
+                    Screen('FrameRect', window, [255,255,255],[-frameRect_size+((1-image_display_scale)/2)*screenWidth, -frameRect_size+picY*screenHeight, frameRect_size+((1-image_display_scale)/2)*screenWidth+image_display_width, frameRect_size+picY*screenHeight+image_display_width*image_ratio], frameRect_size)
+                    Screen('DrawLine', window, [255,255,255], (lineX-halfLength-vertical_line_size/2), (lineY), (lineX+halfLength+vertical_line_size/2), (lineY), main_line_size);
+                    for scalepoint = -3:3
+                        Screen('DrawLine', window, [255,255,255], (lineX + scalepoint*divider), (lineY), (lineX + scalepoint*divider), (lineY-vertical_line_height), vertical_line_size);
+                    end
+                    DrawFormattedText(window, double(lowerText), lineX-halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+                    DrawFormattedText(window, double(upperText), lineX+halfLength-0.04*screenWidth, lineY+0.12*screenHeight, 255)
+                    Screen('FillRect', window, [255,0,0], [lineX+divider*(currentRating-15)/5-RectWidth*2,lineY-RectWidth*2,lineX+divider*(currentRating-15)/5+RectWidth*2,lineY+RectWidth*2]);
+
+                    % 重新绘制 AI 的道德评分条
+                    Screen('FillRect', window, [255,0,0], [lineX+divider*(FTtrainrating(k)-15)/5-RectWidth,lineY-RectWidth*3,lineX+divider*(FTtrainrating(k)-15)/5+RectWidth,lineY+RectWidth*3]);
+                    if AD_rating <=9
+                        DrawFormattedText(window,AD_ratingText, lineX-centerCorr1+divider*(AD_rating-15)/5, lineY-0.04*screenHeight,  [255,255,0]);
+                    else
+                        DrawFormattedText(window, AD_ratingText, lineX-centerCorr2+divider*(AD_rating-15)/5, lineY-0.04*screenHeight,  [255,255,0]);
+                    end
+                    Screen('FillRect', window, [255,255,0], [lineX+divider*(AD_rating-15)/5-RectWidth,lineY-RectWidth*3,lineX+divider*(AD_rating-15)/5+RectWidth,lineY+RectWidth*3]);
+                    Screen('PutImage', window, resizedImage, rect);
+                    Screen('Flip', window, t-slack);
+                    WaitSecs(train_feedbackTime(k));
+                end
+
+                %jitter屏
+                trailjittershow(k)=GetSecs;
+                if mod(k,2)~=0
+                    % 绘制白色十字注视点
+                    Screen('DrawLines', window, allCoords, lineWidthPix, [255 255 255], [xCenter yCenter]);
+                    Screen('Flip', window);
+                    if timeoutFlag == 1
+                        WaitSecs((jitter_train_shuffled(k)-1));
+                    else
+                        WaitSecs(jitter_train_shuffled(k));
+                    end
+                end
+
+                if random_trainconditionList(1,train_blocktime)==5
+                    train_block(k)=5;
+                    train_subADblock(k)= 1;
+                    train_subConditionblock(k)= 2;
+                else
+                    train_block(k)=8;
+                    train_subADblock(k)= 2;
+                    train_subConditionblock(k)= 2;
+                end
+                cueshowtime=GetSecs;
+            end
+        end
+        train_blocktime=train_blocktime+1;
+    end
+
+    ending_Key = KbName('y');
+    while 1
+        DrawFormattedText(window, double('您已完成评分阶段的全部任务，请联系实验人员'),'center', 'center', [255,255,255]);
+        Screen('Flip',window,t-slack); %t-slack在下一个屏幕刷新周期的开始时更新窗口内容
+        [~,~,keyCode]=KbCheck;
+        if keyCode(ending_Key)
+            break;
+        end
+    end
+
+
+    Screen('CloseAll');
+    Screen('Close');
+    fclose('all');
+    %% 数据存放
+    % 获取 subInfo 的长度
+    train_subinfo_length = length(train_subinfo);
+
+    % 如果 subInfo 的长度小于 train_trialnum，则复制最后一行
+    if train_subinfo_length < train_trialnum
+        % 计算需要复制的次数
+        num_repeats = train_trialnum - train_subinfo_length;
+
+        % 复制最后一行
+        train_subinfo = [train_subinfo; repmat(train_subinfo(end, :), num_repeats, 1)];
+    end
+
+
+    if ~all([length(train_picID),  length(train_starttime),length(overtimeshow),length(train_startA), length(train_startB),length(train_startC),length(train_startRating),length(train_Rating), length(train_RT_AC), length(train_RT_AB),length(train_feedbackTime),length(train_isTimeout),length(train_AD_jitter), length(train_AD_Rating),length(jitter_train_shuffled),length(cueshow),length(ADjittershow),length(feedbackshow),length(trailjittershow),length(train_subADblock),length(train_subConditionblock),length(train_block)] == train_trialnum)
+        error('数组长度不一致，请检查数据收集部分的代码');
+    end
+    rating_train_data = [train_subinfo, train_picID,cueshow, train_starttime,ADjittershow,train_startA,train_startB,train_startC,feedbackshow,overtimeshow,trailjittershow,train_startRating, train_Rating,train_AD_Rating,train_RT_AC,train_RT_AB,train_feedbackTime,train_isTimeout,train_AD_jitter,jitter_train_shuffled,train_subADblock,train_subConditionblock,train_block];
+    variableNames = {'subInfo', 'picID','cueshowtime','showwordtime','ADjittershowtime','ScreenStartTime', 'MouseMoveTime', 'ClickTime', 'feedbackshowtime','overtimeshow','trailjittershowtime','randomtrain_startRating','Rating','AD_Rating','reacttime','premovetime','feedbacktime','istimeout','ADjitter','jitter_train_shuffled','train_subADblock','train_subConditionblock','train_block'}; % 列标题
+    rating_train_result = table(train_subinfo, train_picID,cueshow, train_starttime,ADjittershow,train_startA,train_startB,train_startC,feedbackshow,overtimeshow,trailjittershow,train_startRating, train_Rating,train_AD_Rating,train_RT_AC,train_RT_AB,train_feedbackTime,train_isTimeout,train_AD_jitter,jitter_train_shuffled,train_subADblock,train_subConditionblock,train_block,'VariableNames', variableNames);
+
+    subnum = subinfo{1};  % 从 cell 里取编号（可能是数字或字符串）
+    baseDir = "E:\fMRI代码及其附属文件\实验数据\second_traindata";
+
+    % ⚙️ 转成字符串并拼接
+    filename = fullfile(baseDir, sprintf('%s.xlsx', num2str(subnum)));
+
+    % 检查路径是否正确
+    disp(['文件将被保存到：', filename]);
+
+    % 保存文件
+    try
+        writetable(rating_train_result, filename);
+        disp(['文件已成功保存到：', filename]);
+    catch ME
+        error('保存文件时出错：%s', ME.message);
+    end
+
+
+
+catch exception
+    fprintf('主程序存在错误，请检查！\n');
+    fprintf('警告: 转义字符 ''\'' 无效。有关支持的特殊字符，请参阅 ''doc sprintf''。\n');
+    fprintf('错误位置：%s (第 %d 行)\n', exception.stack(1).file, exception.stack(1).line);
+    fprintf('错误信息：%s\n', exception.message);
+    Screen('CloseAll');
+    Screen('Close');
+    fclose('all');
+end
+
+
+function showInstruction(window, filePath, slack, windowRect)
+disp(filePath);  % 打印路径，检查是否正确
+if ~exist(filePath, 'file')
+    error('文件不存在，请检查路径和文件名: %s', filePath);
+end
+introductionStart_image = imread(filePath);
+introductionStart = Screen('MakeTexture', window, introductionStart_image);
+introduction_width = size(introductionStart_image, 2);
+introduction_height = size(introductionStart_image, 1);
+
+% 初始化按键状态
+keyIsDown = false;
+
+while ~keyIsDown
+    Screen('DrawTexture', window, introductionStart, [0, 0, introduction_width, introduction_height], windowRect);
+    Screen('Flip', window);  % 刷新屏幕
+    [~, ~, ~] = KbCheck;
+    keyIsDown = true;  % 设置按键标志为 true
+    % 暂停4秒
+    WaitSecs(4);
+    WaitSecs(slack);  % 控制刷新频率
+end
+end
+
+
+function showexperimentInstruction(window, filePath, slack, windowRect)
+disp(filePath);  % 打印路径，检查是否正确
+if ~exist(filePath, 'file')
+    error('文件不存在，请检查路径和文件名: %s', filePath);
+end
+introductionStart_image = imread(filePath);
+introductionStart = Screen('MakeTexture', window, introductionStart_image);
+introduction_width = size(introductionStart_image, 2);
+introduction_height = size(introductionStart_image, 1);
+
+% 初始化按键状态
+keyIsDown = false;
+
+while ~keyIsDown
+    Screen('DrawTexture', window, introductionStart, [0, 0, introduction_width, introduction_height], windowRect);
+    Screen('Flip', window);  % 刷新屏幕
+    [~, ~, keyCode] = KbCheck;
+    if keyCode(KbName('q')) || keyCode(KbName('Q'))
+        disp('Q 键被按下，进入下一个指导语界面');
+        keyIsDown = true;  % 设置按键标志为 true
+    end
+    WaitSecs(slack);  % 控制刷新频率
+end
+end
