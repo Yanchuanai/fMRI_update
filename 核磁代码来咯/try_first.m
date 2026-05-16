@@ -5,19 +5,20 @@ PsychDefaultSetup(0);
 try
 
     %% 被试信息
-    suborder=17;
+    % suborder=17;
     %MATLAB自带inputdlg函数，其作用是打开一个收集用户输入的对话框，并将输入的信息赋给一个变量
     % inputdlg中，prompt是对需要输入的信息的提示，title就是对话框标题，“[1, 50]”是输入框的维度，表示对话框的高度为一个字符，长度为50个字符。
-    prompt = {'Subject Number','Gender[1 = male, 2 = female]','Age','Handeness[1 = left, 2 = right]', 'Name[initials]'};
+    prompt = {'Subject Number','Gender[1 = male, 2 = female]','Age','Handeness[1 = left, 2 = right]', 'Name[initials]','Subject Order'};
     title = 'Exp infor'; % The title of the dialog boxy
-    default_input = {'999','999','999','999','999'}; % Default input value(s)
+    default_input = {'999','999','999','999','999','999'}; % Default input value(s)
     subinfo = inputdlg(prompt,title,[1, 50],default_input)';
-
-    %% 读入相关材料
+    suborder = str2double(subinfo{6});
+    % 读入相关材料
     tryblockorder = readcell("E:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\被试实验次序表.xlsx");
     % 获取数列的长度
     tryblockorder = cell2mat(tryblockorder);
-    tryconditionList = tryblockorder(suborder*2-1,:);
+    wrapped_suborder = mod(suborder - 1, 30) + 1;
+    tryconditionList = tryblockorder(wrapped_suborder*2-1,:);
     % 读取整个表格
     materialfullTable = readtable('E:\fMRI代码及其附属文件\临时数据存放点\实验材料表.xlsx');
     % 选择特定的列
@@ -90,7 +91,7 @@ try
     % 练习回合数据存放
     try_picID = zeros(try_trialnum, 1);
     try_subinfo = zeros(try_trialnum,1);
-    try_pic= zeros(try_trialnum,1);
+    %try_pic= zeros(try_trialnum,1);
     try_block= zeros(try_trialnum,1);
     try_subADblock= zeros(try_trialnum,1);
     try_subConditionblock= zeros(try_trialnum,1);
@@ -118,7 +119,7 @@ try
         try_subinfo(i) = str2double(subinfo{i});
     end
     % 初始化 try_pic 为单元数组
-    try_pic = cell(try_trialnum, 1);
+    %try_pic = cell(try_trialnum, 1);
 
     showexperimentInstruction(window, "E:\fMRI代码及其附属文件\指导语\croppedinstru_2.bmp",  slack, [0, 0, 2160, 1440]);
     % 暂停 0.5 秒
@@ -126,10 +127,13 @@ try
     %调整block数，1-16（16为一个block）
     try_blocktime=1;
     while try_blocktime<=16
-        if tryconditionList(1,try_blocktime)==1 ||  tryconditionList(1,try_blocktime)==2 ||tryconditionList(1,try_blocktime)==3 ||  tryconditionList(1,try_blocktime)==4 || tryconditionList(1,try_blocktime)==5 ||  tryconditionList(1,try_blocktime)==6 ||tryconditionList(1,try_blocktime)==7 ||  tryconditionList(1,try_blocktime)==8
+        if tryconditionList(1,try_blocktime)==1 ||  tryconditionList(1,try_blocktime)==2 ||...
+            tryconditionList(1,try_blocktime)==3 ||  tryconditionList(1,try_blocktime)==4 ||...
+            tryconditionList(1,try_blocktime)==5 ||  tryconditionList(1,try_blocktime)==6 ||...
+            tryconditionList(1,try_blocktime)==7 ||  tryconditionList(1,try_blocktime)==8
             %显示指导语
             showInstruction(window, "E:\fMRI代码及其附属文件\指导语\cropped_9.bmp",  slack, [0, 0, 2160, 1440]);
-            %采取材料
+            %采取材料 条件编号是几，就提取第几列
             if (mod(tryconditionList(1,try_blocktime),4))==0 && tryconditionList(1,try_blocktime)<=4
                 moralR_try_shuffled = moral_block_result(:,4);
             elseif (mod(tryconditionList(1,try_blocktime),4))~=0 && tryconditionList(1,try_blocktime)<=4

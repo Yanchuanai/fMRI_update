@@ -1,0 +1,14 @@
+try_first
+冗余：
+1、681-691 
+程序试图通过 if try_subinfo_length < try_trialnum 检查长度并利用 repmat 补齐该向量。 
+由于在第 1 步初始化时，该向量的长度已经被固定为 240，因此 try_subinfo_length 恒等于 240，该 if 判断永远为假。
+2、94、122行
+try_pic永远无用
+3、 137-145
+为什么不直接读取c本身？
+moralR_try_shuffled = moral_block_result(:, tryconditionList(1, try_blocktime));
+4、271-275
+由于在两者之间并没有任何代码去重置或修改这些坐标变量，原有的变量值仍然驻留在内存中。
+因此，在这里进行二次重复计算和赋值属于典型的复制粘贴冗余。
+您完全可以仅保留前两行对文本内容的更新，安全删除后五行而不引起任何功能异常。
