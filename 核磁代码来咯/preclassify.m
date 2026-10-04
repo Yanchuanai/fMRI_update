@@ -1,11 +1,11 @@
 
-final_moral_table = randomize_blocks('F:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\词语维度分类.1.xlsx');
-    final_food_table = randomize_blocks_other('F:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\词语维度分类.17.xlsx');
-   % final_recognise_table = randomize_blocks_other('F:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\词语维度分类.177.xlsx');
+final_moral_table = randomize_blocks('E:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\词语维度分类.1.xlsx');
+    final_food_table = randomize_blocks_other('E:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\词语维度分类.17.xlsx');
+   % final_recognise_table = randomize_blocks_other('E:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\词语维度分类.177.xlsx');
     final_food_table= renameTableColumns(final_food_table, '2');
    % final_recognise_table= renameTableColumns(final_recognise_table, '3');
     alltable = [final_moral_table,final_food_table];
-    writetable(alltable, 'F:\fMRI代码及其附属文件\临时数据存放点\实验材料表.xlsx');
+    writetable(alltable, 'E:\fMRI代码及其附属文件\临时数据存放点\实验材料表.xlsx');
 
 
     function final_table = randomize_blocks(filename)
