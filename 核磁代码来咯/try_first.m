@@ -1,3 +1,4 @@
+%% ==================== 【一】全局环境初始化区 ====================
 clear;clc;
 path=pwd;
 PsychDefaultSetup(0);
@@ -127,6 +128,7 @@ try
     %调整block数，1-16（16为一个block）
     try_blocktime=1;
     while try_blocktime<=16
+        %% ==================== 【二】道德评价模块分支 ====================
         if tryconditionList(1,try_blocktime)==1 ||  tryconditionList(1,try_blocktime)==2 ||...
             tryconditionList(1,try_blocktime)==3 ||  tryconditionList(1,try_blocktime)==4 ||...
             tryconditionList(1,try_blocktime)==5 ||  tryconditionList(1,try_blocktime)==6 ||...
@@ -371,6 +373,7 @@ try
                 end
                 blocksubmergeorder(k)=try_blocktime;
             end
+        %% ==================== 【三】食物评价模块分支 ====================
         elseif tryconditionList(1,try_blocktime)==9 ||  tryconditionList(1,try_blocktime)==10 ||tryconditionList(1,try_blocktime)==11 ||  tryconditionList(1,try_blocktime)==12 || tryconditionList(1,try_blocktime)==13 ||  tryconditionList(1,try_blocktime)==14 ||tryconditionList(1,try_blocktime)==15 ||  tryconditionList(1,try_blocktime)==16
             %指导语
             showInstruction(window, "E:\fMRI代码及其附属文件\指导语\cropped_10.bmp",  slack, [0, 0, 2160, 1440]);
@@ -615,6 +618,7 @@ try
                 blocksubmergeorder(k)=try_blocktime;
             end
         end
+        %% ==================== 【四】强制休息拦截机制 ====================
         if mod(try_blocktime,2)==0 && try_blocktime<16
             breakconfirmed = false;
             breaktimeoutShown = false;
@@ -662,7 +666,8 @@ try
         try_blocktime=try_blocktime+1;
     end
 
-    %% 结束界面
+    %% ==================== 【五】数据结算与物理落盘区 ====================
+    % 结束界面
     ending_Key = KbName('y');
     while 1
         DrawFormattedText(window, double('您已完成初次估计的全部任务，请联系实验人员'),'center', 'center', [255,255,255]);
@@ -775,7 +780,7 @@ while ~keyIsDown
     Screen('Flip', window);  % 刷新屏幕
     [~, ~, ~] = KbCheck;
     keyIsDown = true;  % 设置按键标志为 true
-    % 暂停4秒
+    % 暂停1秒
     WaitSecs(1);
     WaitSecs(slack);  % 控制刷新频率
 end

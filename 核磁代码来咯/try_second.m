@@ -1,16 +1,18 @@
+%% ==================== 读入数据与变量初始化 ====================
 clear;clc;
 path=pwd;
 PsychDefaultSetup(0);
 
 try
     %% 被试信息（被试顺序，需要改）
-    suborder=17;
+    % suborder=17;
     %MATLAB自带inputdlg函数，其作用是打开一个收集用户输入的对话框，并将输入的信息赋给一个变量
     % inputdlg中，prompt是对需要输入的信息的提示，title就是对话框标题，“[1, 50]”是输入框的维度，表示对话框的高度为一个字符，长度为50个字符。
-    prompt = {'Subject Number','Gender[1 = male, 2 = female]','Age','Handeness[1 = left, 2 = right]', 'Name[initials]'};
+    prompt = {'Subject Number','Gender[1 = male, 2 = female]','Age','Handeness[1 = left, 2 = right]', 'Name[initials]','Subject Order'};
     title = 'Exp infor'; % The title of the dialog boxy
-    default_input = {'999','999','999','999','999'}; % Default input value(s)
+    default_input = {'999','999','999','999','999','999'}; % Default input value(s)
     subinfo = inputdlg(prompt,title,[1, 50],default_input)';
+    suborder = str2double(subinfo{6});
 
     %% 读入相关材料
     jitter_try_shuffled = readmatrix ("E:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\try_random_numbers.xlsx");
@@ -19,8 +21,9 @@ try
     tryblockorder = readcell("E:\fMRI代码及其附属文件\核磁代码来咯\代码中用到的Excel文件\被试实验次序表.xlsx");
     % 获取数列的长度
     tryblockorder = cell2mat(tryblockorder);
-    tryconditionList = tryblockorder(suborder*2-1,:);
-    plusminusrandom = tryblockorder(suborder*2,:);
+    wrapped_suborder = mod(suborder - 1, 30) + 1;
+    tryconditionList = tryblockorder(wrapped_suborder*2-1,:);
+    plusminusrandom = tryblockorder(wrapped_suborder*2,:);
     % 读取整个表格
     materialfullTable = readtable('E:\fMRI代码及其附属文件\临时数据存放点\实验材料表.xlsx');
     % 选择特定的列
@@ -156,6 +159,7 @@ try
             onesAndTwos = [ones(1, 7), 2 * ones(1, 8)];
         end
         blockmp=onesAndTwos(randperm(15));
+        %% ==================== 道德实验部分 ====================
         if tryconditionList(1,try_blocktime)==1 ||  tryconditionList(1,try_blocktime)==2 ||tryconditionList(1,try_blocktime)==3 ||  tryconditionList(1,try_blocktime)==4 || tryconditionList(1,try_blocktime)==5 ||  tryconditionList(1,try_blocktime)==6 ||tryconditionList(1,try_blocktime)==7 ||  tryconditionList(1,try_blocktime)==8
             cueshowtime = GetSecs;
             %显示指导语
@@ -469,6 +473,7 @@ try
                 relaxshow(k)=relaxshowtime;
                 readyshow(k)=readyshowtime;
             end
+        %% ==================== 食物实验部分 ====================
         elseif tryconditionList(1,try_blocktime)==9 ||  tryconditionList(1,try_blocktime)==10 ||tryconditionList(1,try_blocktime)==11 ||  tryconditionList(1,try_blocktime)==12 || tryconditionList(1,try_blocktime)==13 ||  tryconditionList(1,try_blocktime)==14 ||tryconditionList(1,try_blocktime)==15 ||  tryconditionList(1,try_blocktime)==16
             %指导语
             cueshowtime=GetSecs;
@@ -800,6 +805,7 @@ try
         try_blocktime=try_blocktime+1;
     end
 
+    %% ==================== 写入数据 ====================
     ending_Key = KbName('y');
     while 1
         DrawFormattedText(window, double('您已完成评分阶段的全部任务，请联系实验人员'),'center', 'center', [255,255,255]);
@@ -864,6 +870,7 @@ catch exception
 end
 
 
+%% ==================== 辅助函数 ====================
 function showInstruction(window, filePath, slack, windowRect)
 disp(filePath);  % 打印路径，检查是否正确
 if ~exist(filePath, 'file')
